@@ -1,8 +1,9 @@
-
-# coding: utf-8
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import time
+import progressbar
+import os
 from glob import glob
 
 
@@ -14,14 +15,21 @@ def import_trasient_from_file(url_of_folder):
     return: a dataframe
     """
     append_data = []
-    for file_name in glob(url_of_folder + '*.json'):
-        data = pd.read_json(file_name)
-        append_data.append(data)
-    all_data_as_data_frame = pd.concat(append_data, axis=1) \
-                               .transpose() \
-                               .reset_index() \
-                               .drop('index', 1)
-    return all_data_as_data_frame
+
+    # find out how many files in the folder
+    list = os.listdir(url_of_folder)
+    number_files = len(list)
+    
+    bar = progressbar.ProgressBar()
+    with progressbar.ProgressBar(max_value=number_files) as bar:
+        for i, file_name in enumerate(glob(url_of_folder + '*.json')):
+            data = pd.read_json(file_name)
+            append_data.append(data)
+            bar.update(i)
+        all_data_as_data_frame = pd.concat(append_data, axis=1).transpose()
+                                   
+        only_trasients = all_data_as_data_frame[all_data_as_data_frame["transient_flag"] == "true"]        
+    return only_trasients.reset_index().drop('index', 1)
 
 
 data = import_trasient_from_file("Test_Data/")
