@@ -33,7 +33,8 @@ def import_trasient_from_file(url_of_folder):
 
 
 data = import_trasient_from_file("Test_Data/")
-transientlist = pd.read_csv("Test_Data/transientlist.csv")
+print(data.head())
+'''transientlist = pd.read_csv("Test_Data/transientlist.csv")
 
 
 ###Adding the maximum Voltage as a column and possbile feature for clustering
@@ -73,7 +74,7 @@ for i in range(1,65):
     plot_end = (data.iloc[i]["three_first_peaks_index"])[2]
     plt.plot(plot_transient[(int(plot_start)-500):(int(plot_end)+500)])
     plt.title(str(i))
-#    
+#    r®
 #plt.show()
 
 #print(data.head())
@@ -85,4 +86,4 @@ for i in range(1,65):
 #plt.title('Scatter plot pythonspot.com')
 #plt.xlabel('x')
 #plt.ylabel('y')
-#plt.show()
+#plt.show()'''
