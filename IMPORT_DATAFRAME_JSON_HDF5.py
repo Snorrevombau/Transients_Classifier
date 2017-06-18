@@ -3,10 +3,10 @@
 Created on Sun Jun 11 22:56:00 2017
 
 Notes to this file:
-This script imports all transients located in "/jsons" and puts them inta a pandas df (function: import_trasient_from_file)
+This script imports all transients located in /jsons and puts them inta a pandas df (function: import_trasient_from_file)
 The unique index to identify the transients is the timestamp (float)
 
-As a second step the function map_transients_to_PQ_data  imports the hdf5 files ("/HDF5") and assigns a timeseries of choseable
+As a second step the function map_transients_to_PQ_data  imports the hdf5 files and assigns a timeseries of choseable
 parameters (P, S, f,  u_rms, i_rms, cos_phi) to the transient dataframe
 The length of the timeseries is defined by the timestamp of the transient +- a variable T[s]
 
@@ -80,7 +80,7 @@ def import_trasient_from_file(url_of_folder):
 
 
 def map_transients_to_PQ_data(transients_dataframe, directory_hdf5, T, measurements_to_map):
-    
+    transients_dataframe = transients_dataframe.reset_index()
     # Definition of blank variables for new columns of df 
     for m in range(0,len(measurements_to_map)):
         transients_dataframe[measurements_to_map[m]]=np.nan
@@ -95,17 +95,18 @@ def map_transients_to_PQ_data(transients_dataframe, directory_hdf5, T, measureme
         #Import hdf as pd
         PQ_data_total = pd.read_hdf(hdf_filename)
 #        #Filtering relevant PQ_data for transient (timestamp +-T[s])
-        transient_timestamp = transients_dataframe.index[row]
+        transient_timestamp = transients_dataframe.iloc[row]['begin_timestamp_float']
         PQ_data_relevant = (PQ_data_total[(PQ_data_total['timestamp'] >= float(transient_timestamp)-T) & (PQ_data_total['timestamp'] <=(float(transient_timestamp)+T))])
         
 #         #Adding the chosen measurements to a column
         for m in range(0,len(measurements_to_map)):
             PQ_data_list = PQ_data_relevant[measurements_to_map[m]].tolist()
-            transients_dataframe.set_value(transient_timestamp,measurements_to_map[m],PQ_data_list)
             
-    
+            transients_dataframe.set_value(row,measurements_to_map[m],PQ_data_list)
+            
+    transients_dataframe= transients_dataframe.set_index('begin_timestamp_float')
     return transients_dataframe
 
 
-data = import_trasient_from_file("jsons/")
-data = map_transients_to_PQ_data(data, "HDF5", 5, ['P'])
+#data = import_trasient_from_file("jsons/")
+#data = map_transients_to_PQ_data(data, "HDF5", 5, ['P'])
