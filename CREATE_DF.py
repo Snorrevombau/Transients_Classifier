@@ -40,7 +40,8 @@ def create_feature_df(sep_input_data):
                'index_1_2', 'index_2_2', 'index_3_2',
                'index_1_3', 'index_2_3', 'index_3_3',
                'transient_rise_gradient_1', 'transient_rise_gradient_2',
-               'transient_rise_gradient_3', 'P_delta']
+               'transient_rise_gradient_3', 'P_delta_1',
+               'P_delta_2', 'P_delta_3']
     feature_df = pd.DataFrame(np.nan, index=index, columns=columns)
     for index, row in sep_input_data.iterrows():
         phase_num = row['phase_num']
@@ -50,7 +51,7 @@ def create_feature_df(sep_input_data):
                 index,
                 ['peak_1_1', 'peak_2_1', 'peak_3_1',
                  'index_1_1', 'index_2_1', 'index_3_1',
-                 'transient_rise_gradient_1', 'P_delta'],
+                 'transient_rise_gradient_1', 'P_delta_1'],
                 [row['peak_1'], row['peak_2'], row['peak_3'],
                  row['p_index_1'], row['p_index_2'], row['p_index_3'],
                  row['transient_rise_gradient'], row['P_delta']])
@@ -60,7 +61,7 @@ def create_feature_df(sep_input_data):
                 index,
                 ['peak_1_2', 'peak_2_2', 'peak_3_2',
                  'index_1_2', 'index_2_2', 'index_3_2',
-                 'transient_rise_gradient_2', 'P_delta'],
+                 'transient_rise_gradient_2', 'P_delta_2'],
                 [row['peak_1'], row['peak_2'], row['peak_3'],
                  row['p_index_1'], row['p_index_2'], row['p_index_3'],
                  row['transient_rise_gradient'], row['P_delta']])
@@ -70,7 +71,7 @@ def create_feature_df(sep_input_data):
                 index,
                 ['peak_1_3', 'peak_2_3', 'peak_3_3',
                  'index_1_3', 'index_2_3', 'index_3_3',
-                 'transient_rise_gradient_3', 'P_delta'],
+                 'transient_rise_gradient_3', 'P_delta_3'],
                 [row['peak_1'], row['peak_2'], row['peak_3'],
                  row['p_index_1'], row['p_index_2'], row['p_index_3'],
                  row['transient_rise_gradient'], row['P_delta']])

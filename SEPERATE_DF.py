@@ -46,6 +46,7 @@ def seperate_transients(input_df):
                 three_phase_df = three_phase_df.append(row)
     # take the dtypes from the input header
     dtypes = dict(input_df.dtypes)
+    events_from_outside = events_from_outside.astype(dtype=dtypes)
     one_phase_df = one_phase_df.astype(dtype=dtypes)
     two_phase_df = two_phase_df.astype(dtype=dtypes)
     three_phase_df = three_phase_df.astype(dtype=dtypes)
