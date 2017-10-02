@@ -34,7 +34,7 @@ def convert_to_datetime(timestamp_as_str):
         A readable timestamp for pandas
     """
     date, time, time_ns = timestamp_as_str.split('_')
-    return pd.to_datetime(date + ' ' + time + '.' + time_ns)
+    return pd.to_datetime(date + ' ' + time + '.' + time_ns, dayfirst=True)
 
 
 def import_trasient_from_file(url_of_folder):
