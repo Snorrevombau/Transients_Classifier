@@ -105,7 +105,7 @@ def detect_switch_event(rows, phase, Event_df):
             
         #Check for unplug events of n_cars
         n_cars = int(P_residual//3000)           
-        if (P_residual >=2):
+        if (n_cars >=2):
             only_load_event_df_multiple = only_load_event_df.set_index('minuten_index')
             combinations = list(itertools.combinations(only_load_event_df_multiple.index.tolist(),n_cars))
             combination_df = pd.DataFrame([only_load_event_df_multiple.loc[c,:]['Ladeleistung'].sum() for c in combinations ],columns=['Ladeleistung'], index=combinations )
