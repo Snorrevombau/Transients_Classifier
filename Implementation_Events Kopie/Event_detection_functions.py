@@ -1,54 +1,43 @@
-
-# coding: utf-8
-
-# In[2]:
-
 import pandas as pd
 import numpy as np
-import progressbar
-import matplotlib.pyplot as plt
-from IMPORT_DATAFRAME_JSON_HDF5 import *
-get_ipython().magic('matplotlib notebook')
 import itertools
-import os
-from IPython.display import display, HTML
 
 
-# In[3]:
 
 def detect_switch_event(rows, phase, Event_df):
     minuten_index = rows.index[-1]
     timestamp = rows.iloc[-1]['timestamp']
     Leerlaufleistung_Phase = rows.iloc[0]['P']  
-    ### Einschaltvorgang dedektieren ###
-    # ist delta P relevant
+
+    ### Detect plug-in events ###
+    # Relevent P_delta?
     if(rows.iloc[-1]['P_delta'] > 500):
-        # Prüfen ob Ladenvorgang beginnt/beendet
-        # Wenn delta P positiv ---> event kreieren um später zu checken ob es ein Einschaltvorgang war
+        # Creating a plug-in event to later check if it was a "real" plug-in
         Event_df.loc[len(Event_df)]= [timestamp, phase, minuten_index, 'ein', 'not checked', 0,0,0]
     
-    #Check events: Überprüfen ob vorher eingetragenes event wirklich ein Einschaltvorgang ist
     event_df_length = len(Event_df)
     row_event = 0
-
+    # Iterate through event dataframe to verify if previously added events are "real" plug-ins 
     while row_event < event_df_length:
-            #condition to check event
             minuten_index_event = Event_df.iloc[row_event]['minuten_index']
-            #Check auf Einschaltvorgang
+            #Checking previously added events if 3 minutes passed
             if ((minuten_index_event+3 == minuten_index) & 
                 (Event_df.iloc[row_event]['Ladevorgang'] == 'ein') &
                 (Event_df.iloc[row_event]['Phase'] == phase)):
-                Ladeleistung = rows.loc[minuten_index_event+3]['P'] - rows.loc[minuten_index_event-3]['P']            
+
+                #Condition 1: P_L = P(t+3)-P(t-3) > 2000
+                Ladeleistung = rows.loc[minuten_index_event+3]['P'] - rows.loc[minuten_index_event-3]['P']  
+                #Condition 2: sum(P_delta)(t:t+3) ≈ P_L        
                 sum_delta_P = rows.loc[minuten_index_event:minuten_index_event+3]['P_delta'].sum()
                 deviation = abs(Ladeleistung-sum_delta_P)/Ladeleistung 
                 
-                #Kein Einschaltvorgang:
+                #Verifying conditions 1 & 2 for 3 Cases
+                # Case 1: No plug-in
                 if ((deviation > 0.12) | (Ladeleistung < 2000)):
                     Event_df = Event_df.drop(row_event)
                     Event_df = Event_df.reset_index(drop=True)
-                #Einschaltvorgang
+                #Case 2: More then 1 ev plug-in to the same time
                 else:
-                    #Mehrere Einschaltungen gleichzeitig
                     num_cars = Ladeleistung//3000
                     if (num_cars>=2):
                         Event_df.loc[row_event, ['Status', 'Ladeleistung']] = ['checked', (Ladeleistung/num_cars)]
@@ -56,21 +45,17 @@ def detect_switch_event(rows, phase, Event_df):
                             Event_df.loc[row_event+1]= [timestamp, phase, minuten_index_event, 'ein', 'not checked', 0,0,0]
                             Event_df.loc[row_event+1, ['Status', 'Ladeleistung']] = ['checked', (Ladeleistung/num_cars)]
                             row_event += 1
-                    #Ein Einschaltvorgang
+                    #Case 3: 1 ev plug-in
                     else:
                         Event_df.loc[row_event, ['Status', 'Ladeleistung']] = ['checked', Ladeleistung]
             event_df_length = len(Event_df)
             row_event += 1
-            #security break for endless loop (just in case :D )
+            #security break for endless loop (shouldn't happen, butjust in case :D )
             if row_event>=100:
                 break
 
          
-    ### Ausschaltvorgang dedektieren ###
-    #Checken ob aktuelle Leistung das Ende eines Einschaltvorgangs impliziert 
-    
-    
-    
+    ### Detecting Unplug Eventes ###
     if (('ein' in Event_df['Ladevorgang'].unique()) &
         ('checked' in Event_df['Status'].unique())):
         # create df with charging status on
@@ -78,23 +63,25 @@ def detect_switch_event(rows, phase, Event_df):
                                       (Event_df['minuten_index'] < minuten_index)&
                                       (Event_df['Phase'] == phase)&
                                       (Event_df['Status'] == 'checked')]
+
         # Soll Leistung = Leistung die auf der Phase anliegen sollte,
         # wenn alle zuvor ladenden Autos noch an der Phase hängen würden
         
         minuten_index_off = rows.index[-5]
         timestamp_off = rows.iloc[-5]['timestamp']
-        
+
+        # Check if current power implies an unplug event of a previously plugged in car
+        # Soll_Leistung: Power consumption theoretically implied by currently charging cars
         Soll_Leistung = Leerlaufleistung_Phase + Event_df[(Event_df['Ladevorgang']=='ein') & 
                                                           (Event_df['minuten_index'] <= minuten_index) & 
                                                           (Event_df['minuten_index_Abschaltung'] == 0) & 
                                                           (Event_df['Phase'] == phase)]['Ladeleistung'].sum()
-        #Aktuelle Leistung (neuer Messwert)
+        #Ist_Leistung: Current powr consumption
         Ist_Leistung = rows.iloc[-1]['P']
-        #Residuale Leistung 
+        #P_residual: Power which is 'missing'
         P_residual = Soll_Leistung - Ist_Leistung
-        #Überprüfen ob fehlende Leistung (P_residual) zu einem zuvor ladenden Auto passt
-        only_load_event_df['deviation_P'] = only_load_event_df['Ladeleistung'].                                     apply(lambda ladeleistung_auto: abs(ladeleistung_auto-P_residual)/ladeleistung_auto)
-        
+        #Calculating the deviation of the rated power of all charging cars with the residual power
+        only_load_event_df['deviation_P'] = only_load_event_df['Ladeleistung'].apply(lambda ladeleistung_auto: abs(ladeleistung_auto-P_residual)/ladeleistung_auto)
         
         # create a np array from the last four P
         last_four_P = rows[-4:]['P'].values
@@ -107,16 +94,16 @@ def detect_switch_event(rows, phase, Event_df):
         # calculate zhe mean of the gradients
         gradient_P = np.mean(gradients_P)
         
-        #Check auf einphasige Abschaltung
+        #Check for unplug vevent of 1 car
         if (((only_load_event_df['deviation_P'] < 0.2).any()) & ((abs_gradient_P < 5) | (gradient_P > 100))):
             # sort load events by size
-            # und nehme das erste Event, was der aktuellen leistung am nächsten ist
+            # Sorting all currently charging cars by the lowest deviation to the residual power and chosing the closest one as an unplug event
             charg_off_ev_index = only_load_event_df['deviation_P'].sort_values().index[0]
             Event_df.loc[charg_off_ev_index,['minuten_index_Abschaltung']] = minuten_index_off
             Event_df.loc[charg_off_ev_index,['timestamp_abschalt']] = timestamp_off
             Event_df.loc[charg_off_ev_index, ['Ladevorgang']] = 'aus'
             
-        #Check auf Abschaltung von X (n_cars) Autos gleichzeitig
+        #Check for unplug events of n_cars
         n_cars = int(P_residual//3000)           
         if (P_residual >=2):
             only_load_event_df_multiple = only_load_event_df.set_index('minuten_index')
@@ -132,10 +119,10 @@ def detect_switch_event(rows, phase, Event_df):
     return Event_df
 
 
-# In[4]:
+
 
 def combine_charging_events(Event_df):
-    # Zusammenfassen von mehrphasigen Ladevorängen
+    # Combine charging events starting at the same timestamp to multiple phase charging events
     ladevorgang_df = pd.DataFrame(columns = ['timestamp_start','Phasen', 'Durchschnittliche Ladeleistung','Ladevorgang_ende'])
     for events in range(0,len(Event_df)):
         timestamp = Event_df.iloc[events]['timestamp']
@@ -155,7 +142,7 @@ def combine_charging_events(Event_df):
     return ladevorgang_df
 
 
-# In[5]:
+
 
 def cars_charging(timestamp,ladevorgang_df):
     
@@ -186,12 +173,12 @@ def cars_charging(timestamp,ladevorgang_df):
     return charging_df
 
 
-# In[ ]:
 
 
 
 
-# In[ ]:
+
+
 
 
 
