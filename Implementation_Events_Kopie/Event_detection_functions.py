@@ -2,14 +2,14 @@ import pandas as pd
 import numpy as np
 import itertools
 
-def detect_switch_event(rows, phase, Event_df):
-    minuten_index = rows.index[-1]
-    timestamp = rows.iloc[-1]['timestamp']
-    Leerlaufleistung_Phase = rows.iloc[0]['P']  
+def detect_switch_event(last_rows_P, phase, Event_df,no_load_p):
+    minuten_index = last_rows_P.index[-1]
+    timestamp = last_rows_P.iloc[-1]['timestamp']
+    Leerlaufleistung_Phase = no_load_p
 
     ### Detect plug-in events ###
     # Relevent P_delta?
-    if(rows.iloc[-1]['P_delta'] > 500):
+    if(last_rows_P.iloc[-1]['P_delta'] > 500):
         # Creating a plug-in event to later check if it was a "real" plug-in
         Event_df.loc[len(Event_df)]= [timestamp, phase, minuten_index, 'ein', 'not checked', 0,0,0]
     
@@ -24,9 +24,9 @@ def detect_switch_event(rows, phase, Event_df):
                 (Event_df.iloc[row_event]['Phase'] == phase)):
 
                 #Condition 1: P_L = P(t+3)-P(t-3) > 2000
-                Ladeleistung = rows.loc[minuten_index_event+3]['P'] - rows.loc[minuten_index_event-3]['P']  
+                Ladeleistung = last_rows_P.loc[minuten_index_event+3]['P'] - last_rows_P.loc[minuten_index_event-3]['P']
                 #Condition 2: sum(P_delta)(t:t+3) ≈ P_L        
-                sum_delta_P = rows.loc[minuten_index_event:minuten_index_event+3]['P_delta'].sum()
+                sum_delta_P = last_rows_P.loc[minuten_index_event:minuten_index_event+3]['P_delta'].sum()
                 deviation = abs(Ladeleistung-sum_delta_P)/Ladeleistung 
                 
                 #Verifying conditions 1 & 2 for 3 Cases
@@ -65,8 +65,8 @@ def detect_switch_event(rows, phase, Event_df):
         # Soll Leistung = Leistung die auf der Phase anliegen sollte,
         # wenn alle zuvor ladenden Autos noch an der Phase hängen würden
         
-        minuten_index_off = rows.index[-5]
-        timestamp_off = rows.iloc[-5]['timestamp']
+        minuten_index_off = last_rows_P.index[-5]
+        timestamp_off = last_rows_P.iloc[-5]['timestamp']
 
         # Check if current power implies an unplug event of a previously plugged in car
         # Soll_Leistung: Power consumption theoretically implied by currently charging cars
@@ -75,14 +75,19 @@ def detect_switch_event(rows, phase, Event_df):
                                                           (Event_df['minuten_index_Abschaltung'] == 0) & 
                                                           (Event_df['Phase'] == phase)]['Ladeleistung'].sum()
         #Ist_Leistung: Current powr consumption
-        Ist_Leistung = rows.iloc[-1]['P']
+        Ist_Leistung = last_rows_P.iloc[-1]['P']
         #P_residual: Power which is 'missing'
         P_residual = Soll_Leistung - Ist_Leistung
         #Calculating the deviation of the rated power of all charging cars with the residual power
         only_load_event_df['deviation_P'] = only_load_event_df['Ladeleistung'].apply(lambda ladeleistung_auto: abs(ladeleistung_auto-P_residual)/ladeleistung_auto)
-        
+        #print('Aktuelle Minute: '+ str(minuten_index))
+        #print('Soll Leistung: '+ str(Soll_Leistung))
+        #print('Ist Leistung: '+ str(Ist_Leistung))
+        #print('event:Df')
+        #print(only_load_event_df)
+        #print ('Leerlauf: ' + str(Leerlaufleistung_Phase))
         # create a np array from the last four P
-        last_four_P = rows[-4:]['P'].values
+        last_four_P = last_rows_P[-4:]['P'].values
         # calculate the gradient
         gradients_P = np.gradient(last_four_P)
         # calculate absolute gradients values

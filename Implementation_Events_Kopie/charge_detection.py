@@ -8,7 +8,7 @@ import time
 Event_df = pd.DataFrame(columns = ['timestamp','Phase','minuten_index',
                                    'Ladevorgang', 'Status', 'Ladeleistung',
                                    'minuten_index_Abschaltung','timestamp_abschalt'])
-pseudocode_df = pd.DataFrame([])
+
 
 backtrack_timesteps = 7
 
@@ -25,18 +25,21 @@ def countlines(filename):
 
 
 lines = countlines(os.path.join(path_to_csvs, 'power_today_minute_1.csv'))
-print(lines)
+#print(lines)
 
 phase_1_df = pd.read_csv(os.path.join(path_to_csvs, 'power_today_minute_1.csv'), names = ['timestamp','P'])
 phase_1_df['P_delta'] = phase_1_df.P.diff()
+no_load_p_1 = phase_1_df.iloc[0]['P']
 phase_2_df = pd.read_csv(os.path.join(path_to_csvs, 'power_today_minute_2.csv'), names = ['timestamp','P'])
 phase_2_df['P_delta'] = phase_2_df.P.diff()
+no_load_p_2 = phase_2_df.iloc[0]['P']
 phase_3_df = pd.read_csv(os.path.join(path_to_csvs, 'power_today_minute_3.csv'), names = ['timestamp','P'])
 phase_3_df['P_delta'] = phase_3_df.P.diff()
+no_load_p_3 = phase_3_df.iloc[0]['P']
 
 for minute_day in range(2,lines):
     time.sleep(0.01)
-    print(minute_day)
+    #print(minute_day)
     # Insert this in the update routine after the power_today_minute.csv export
     # The following variables have to be set to the corresponding dataframe in the environment (export to power_today_minute_x.csv)
     P_Phase_1 = phase_1_df[max(0,minute_day-backtrack_timesteps):minute_day]
@@ -44,13 +47,11 @@ for minute_day in range(2,lines):
     P_Phase_3 = phase_3_df[max(0,minute_day-backtrack_timesteps):minute_day]
 
     phase_dict = {1:P_Phase_1, 2:P_Phase_2, 3:P_Phase_3}
-
+    no_load_power_dict = {1:no_load_p_1,2:no_load_p_2,3:no_load_p_3 }
     # Detection of switch-on and switch-off events
     for Phase in [1,2,3]:
         time.sleep(0.01)
-        pseudocode_df = phase_dict[Phase]
-        pseudocode_df['P_delta'] = phase_dict[Phase].P.diff()
-        Event_df = detect_switch_event(pseudocode_df, Phase, Event_df)
+        Event_df = detect_switch_event(phase_dict[Phase], Phase, Event_df,no_load_power_dict[Phase])
 
 print(Event_df)
 ladevorgang_df = combine_charging_events(Event_df)
